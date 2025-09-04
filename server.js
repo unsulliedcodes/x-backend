@@ -6,7 +6,12 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 let bearerToken = null; // Cache token
 
-// Generate Bearer token (app-only auth)
+// Root endpoint
+app.get('/', (req, res) => {
+  res.send('Your server is running');
+});
+
+// Generate Bearer token
 async function getBearerToken() {
   if (bearerToken) return bearerToken;
   const credentials = Buffer.from(`${process.env.X_API_KEY}:${process.env.X_API_SECRET}`).toString('base64');
@@ -24,7 +29,7 @@ async function getBearerToken() {
   }
 }
 
-// Endpoint: GET /profile?username=elonmusk
+// Profile endpoint
 app.get('/profile', async (req, res) => {
   const { username } = req.query;
   if (!username) {
@@ -48,7 +53,6 @@ app.get('/profile', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Construct JSON response
     const profileInfo = {
       username: data.username,
       id: data.id,
@@ -56,8 +60,8 @@ app.get('/profile', async (req, res) => {
       avatar: data.profile_image_url || null,
       bio: data.description || null,
       followers_count: data.public_metrics?.followers_count || null,
-      friends_count: data.public_metrics?.following_count || null, // "Following" in X terms
-      created_at: data.created_at, // ISO timestamp, e.g., "2006-03-21T20:50:14.000Z"
+      friends_count: data.public_metrics?.following_count || null,
+      created_at: data.created_at,
       location: data.location || null,
       verified: data.verified || false,
       profile_url: data.url || `https://twitter.com/${data.username}`,
