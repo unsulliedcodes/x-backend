@@ -41,7 +41,7 @@ app.get('/profile', async (req, res) => {
     const apiUrl = `https://api.twitter.com/2/users/by/username/${username}`;
     const response = await axios.get(apiUrl, {
       params: {
-        'user.fields': 'created_at,description,profile_image_url,public_metrics,name,location,verified,url,id',
+        'user.fields': 'created_at,description,profile_image_url,public_metrics,name,location,verified,verified_type,url,id',
       },
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -49,6 +49,7 @@ app.get('/profile', async (req, res) => {
     });
 
     const data = response.data.data;
+    console.log('Raw X API response:', JSON.stringify(response.data, null, 2)); // Log for debugging
     if (!data) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -64,6 +65,7 @@ app.get('/profile', async (req, res) => {
       created_at: data.created_at,
       location: data.location || null,
       verified: data.verified || false,
+      verified_type: data.verified_type || null,
       profile_url: data.url || `https://twitter.com/${data.username}`,
       tweet_count: data.public_metrics?.tweet_count || null,
       note: 'Data from X API v2. Protected accounts may return limited info.',
@@ -71,6 +73,7 @@ app.get('/profile', async (req, res) => {
 
     res.json(profileInfo);
   } catch (error) {
+    console.error('API error:', error.response?.data || error.message);
     res.status(500).json({ error: 'API error: ' + (error.response?.data?.errors?.[0]?.message || error.message) });
   }
 });
