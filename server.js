@@ -45,7 +45,7 @@ app.get('/profile', async (req, res) => {
     return res.status(400).json({ error: 'Username required' });
   }
 
-  // Check cache
+  // Normalize cache key to lowercase
   const cacheKey = username.toLowerCase();
   if (cache.has(cacheKey)) {
     console.log('Serving from cache:', cacheKey);
@@ -87,14 +87,15 @@ app.get('/profile', async (req, res) => {
       note: 'Data from X API v2. Protected accounts may return limited info.',
     };
 
-    // Cache for 5 minutes
+    // Cache for 15 minutes
     cache.set(cacheKey, profileInfo);
-    setTimeout(() => cache.delete(cacheKey), 5 * 60 * 1000);
+    setTimeout(() => cache.delete(cacheKey), 15 * 60 * 1000);
 
     res.json(profileInfo);
   } catch (error) {
     console.error('API error:', error.response?.data || error.message);
     if (error.response?.status === 429) {
+      console.log('Rate limit headers:', error.response.headers); // Log rate limit details
       res.status(429).json({ error: 'API error: Rate limit exceeded. Try again later.' });
     } else {
       res.status(500).json({ error: 'API error: ' + (error.response?.data?.errors?.[0]?.message || error.message) });
