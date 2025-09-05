@@ -5,6 +5,14 @@ const axios = require('axios');
 const app = express();
 const PORT = process.env.PORT || 3000;
 let bearerToken = null; // Cache token
+const cache = new Map(); // In-memory cache for profile data
+
+// Enable CORS
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET');
+  next();
+});
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -25,6 +33,7 @@ async function getBearerToken() {
     bearerToken = response.data.access_token;
     return bearerToken;
   } catch (error) {
+    console.error('Bearer token error:', error.response?.data || error.message);
     throw new Error('Bearer token error: ' + (error.response?.data?.error || error.message));
   }
 }
@@ -34,6 +43,13 @@ app.get('/profile', async (req, res) => {
   const { username } = req.query;
   if (!username) {
     return res.status(400).json({ error: 'Username required' });
+  }
+
+  // Check cache
+  const cacheKey = username.toLowerCase();
+  if (cache.has(cacheKey)) {
+    console.log('Serving from cache:', cacheKey);
+    return res.json(cache.get(cacheKey));
   }
 
   try {
@@ -71,10 +87,18 @@ app.get('/profile', async (req, res) => {
       note: 'Data from X API v2. Protected accounts may return limited info.',
     };
 
+    // Cache for 5 minutes
+    cache.set(cacheKey, profileInfo);
+    setTimeout(() => cache.delete(cacheKey), 5 * 60 * 1000);
+
     res.json(profileInfo);
   } catch (error) {
     console.error('API error:', error.response?.data || error.message);
-    res.status(500).json({ error: 'API error: ' + (error.response?.data?.errors?.[0]?.message || error.message) });
+    if (error.response?.status === 429) {
+      res.status(429).json({ error: 'API error: Rate limit exceeded. Try again later.' });
+    } else {
+      res.status(500).json({ error: 'API error: ' + (error.response?.data?.errors?.[0]?.message || error.message) });
+    }
   }
 });
 
